@@ -8,6 +8,7 @@ docker run -ti \
   -e U=${U} \
   -e P=${P} \
   -e T=${T} \
+  -e HOSTNAME=$$(hostname -f)
   -v /var/run/docker.sock:/var/run/docker.sock \
   krkr/docker-stream
 ```
