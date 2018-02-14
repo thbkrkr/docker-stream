@@ -107,14 +107,15 @@ func push(containers []types.Container) {
 
 func stream() {
 	events, errs := docker.Events(context.Background(), types.EventsOptions{})
+
 	go func() {
 		for err := range errs {
 			log.Error(err)
 		}
 	}()
+
 	for event := range events {
 		//log.Infof("%+v", event)
-		//log.Info(event.Type)
 		if event.Type == "container" {
 			msg, _ := json.Marshal(Container{
 				Timestamp: time.Now().Unix(),
