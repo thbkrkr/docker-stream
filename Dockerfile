@@ -1,4 +1,4 @@
-FROM golang:1.9.4-alpine as builder
+FROM golang:1.10-alpine3.7 as builder
 ENV GOBIN=/go/bin/ GOPATH=/go
 WORKDIR /go/src/github.com/thbkrkr/docker-stream
 COPY . /go/src/github.com/thbkrkr/docker-stream
