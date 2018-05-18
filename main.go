@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"os"
+	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -22,7 +24,9 @@ var (
 	kafka  *qlient.Qlient
 	pub    chan []byte
 
+	noExecEvent    bool
 	defaultHeaders = map[string]string{"User-Agent": name + "/" + gitCommit}
+	tick           = time.Duration(1) * time.Minute
 )
 
 type Container struct {
@@ -35,6 +39,9 @@ type Container struct {
 }
 
 func main() {
+	flag.BoolVar(&noExecEvent, "no-exec-event", true, "Filter exec_* event")
+	flag.Parse()
+
 	hostname = os.Getenv("HOSTNAME")
 	if hostname == "" {
 		hostname = os.Getenv("HOST")
@@ -55,7 +62,7 @@ func main() {
 
 	ps()
 	go func() {
-		tick := time.NewTicker(time.Duration(1) * time.Minute)
+		tick := time.NewTicker(tick)
 		for range tick.C {
 			ps()
 		}
@@ -115,17 +122,24 @@ func stream() {
 	}()
 
 	for event := range events {
-		//log.Infof("%+v", event)
-		if event.Type == "container" {
-			msg, _ := json.Marshal(Container{
-				Timestamp: time.Now().Unix(),
-				Host:      hostname,
-				ID:        event.ID,
-				Image:     event.Actor.Attributes["image"],
-				Name:      event.Actor.Attributes["name"],
-				Status:    event.Status,
-			})
-			pub <- []byte(msg)
+		// Discard exec event
+		if noExecEvent && strings.HasPrefix(event.Status, "exec_") {
+			continue
 		}
+
+		// Discard event not relative to containers
+		if event.Type != "container" {
+			continue
+		}
+
+		msg, _ := json.Marshal(Container{
+			Timestamp: time.Now().Unix(),
+			Host:      hostname,
+			ID:        event.ID,
+			Image:     event.Actor.Attributes["image"],
+			Name:      event.Actor.Attributes["name"],
+			Status:    event.Status,
+		})
+		pub <- []byte(msg)
 	}
 }
